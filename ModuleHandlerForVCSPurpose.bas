@@ -27,6 +27,7 @@ Option Explicit
 
 Global Const Path As String = "C:\YourPath" 'Path to directory wher Export/Import folder will be created
 Global Const FolderName As String = "FolderName" 'Target folder name used for Export/Import
+Global Const CleanModulesOnImport As Boolean = True ' Wether or not to delete all the files in your VBA environment when you import files
 
 Public Sub ExportModules()
     Dim bExport As Boolean
@@ -55,7 +56,7 @@ Public Sub ExportModules()
     For Each cmpComponent In wkbSource.VBProject.VBComponents
         
         bExport = True
-        sFileName = cmpComponent.Name
+        sFileName = Replace(cmpComponent.Name, "_", "\")
 
         ''' Concatenate the correct filename for export.
         Select Case cmpComponent.Type
@@ -83,10 +84,10 @@ Public Sub ExportModules()
 
     MsgBox "Export done"
 End Sub
+
 Public Sub ImportModules()
     Dim wkbTarget As Excel.Workbook
     Dim objFSO As Scripting.FileSystemObject
-    Dim objFile As Scripting.File
     Dim sTargetWorkbook As String
     Dim sImportPath As String
     Dim sFileName As String
@@ -107,27 +108,51 @@ Public Sub ImportModules()
     Set objFSO = New Scripting.FileSystemObject
     If objFSO.GetFolder(sImportPath).Files.Count = 0 Then
        MsgBox "There are no files to import"
-       Exit Sub
+       ' Exit Sub
     End If
 
     'Delete all modules/Userforms from the (active)Workbook
-    Call DeleteVBAModulesAndUserForms
+    If CleanModulesOnImport Then
+        Call DeleteVBAModulesAndUserForms
+    End If
 
     Set cmpComponents = wkbTarget.VBProject.VBComponents
-    
+
+    ImportFilesFromDirectory objFSO, objFSO.GetFolder(sImportPath), cmpComponents, ""
+    MsgBox "Import done"
+End Sub
+
+Private Sub ImportFilesFromDirectory(objFSO As FileSystemObject, sFolder As Scripting.Folder, cmpComponents As VBIDE.VBComponents, sModulePrefix As String)
+    Dim objFile As Scripting.File
+    Dim objFolder As Scripting.Folder
+    ' MsgBox "Importing files from " & sFolder.Path
     ''' Import all the code modules in the specified path to the ActiveWorkbook.
-    For Each objFile In objFSO.GetFolder(sImportPath).Files
+    For Each objFile In sFolder.Files
     
         If (objFSO.GetExtensionName(objFile.Name) = "cls") Or _
             (objFSO.GetExtensionName(objFile.Name) = "frm") Or _
             (objFSO.GetExtensionName(objFile.Name) = "bas") Then
+            Dim LastIndex As Integer
+            LastIndex = cmpComponents.Count + 1
             cmpComponents.Import objFile.Path
+            If cmpComponents.Item(LastIndex).Name = objFSO.GetBaseName(objFile.Name) Then
+                With cmpComponents.Item(LastIndex)
+                    .Name = sModulePrefix & objFSO.GetBaseName(objFile.Name)
+                End With
+            Else
+                MsgBox objFSO.GetBaseName(objFile.Name) & " != " & cmpComponents.Item(LastIndex).Name
+            End If
         End If
         
     Next objFile
-    
-    MsgBox "Import done"
+
+    For Each objFolder in sFolder.SubFolders
+        If Not InStr(1, objFolder.Name, ".") = 1 Then
+            ImportFilesFromDirectory objFSO, objFolder, cmpComponents, sModulePrefix & objFolder.Name & "_"
+        End If
+    Next objFolder
 End Sub
+
 Function FolderWithVBAProjectFiles() As String
     
     Dim TargetPath As String
@@ -154,6 +179,7 @@ Function FolderWithVBAProjectFiles() As String
     End If
     
 End Function
+
 Function DeleteVBAModulesAndUserForms()
         Dim VBProj As VBIDE.VBProject
         Dim VBComp As VBIDE.VBComponent
@@ -164,6 +190,8 @@ Function DeleteVBAModulesAndUserForms()
             If VBComp.Type = vbext_ct_Document Then
                 'We do nothing. And it's bette like this I assure you
                 'Else if you want some scare uncomment next line ;)
+            ElseIf VBComp.Name = "ModuleHandlerForVCSPurpose" Then
+                ' Let's not suicide :)
             Else
                 VBProj.VBComponents.Remove VBComp
             End If
