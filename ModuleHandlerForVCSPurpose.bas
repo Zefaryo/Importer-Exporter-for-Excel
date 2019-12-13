@@ -139,8 +139,6 @@ Private Sub ImportFilesFromDirectory(objFSO As FileSystemObject, sFolder As Scri
                 With cmpComponents.Item(LastIndex)
                     .Name = sModulePrefix & objFSO.GetBaseName(objFile.Name)
                 End With
-            Else
-                MsgBox objFSO.GetBaseName(objFile.Name) & " != " & cmpComponents.Item(LastIndex).Name
             End If
         End If
         
