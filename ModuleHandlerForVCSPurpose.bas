@@ -11,16 +11,8 @@ Attribute VB_Name = "ModuleHandlerForVCSPurpose"
 ''' This workbook must be the active one in Excel.
 ''' Use sub-routine exportmodules or importmodules to export/import to your liking
 '''IMPORTANT: when reimporting, all modules will be deleted befor importing to import cleanly (without duplicates)
-'''IMPORTANT: When exporting, files will be overriden
+'''IMPORTANT: When exporting, files on your disk will be overriden
 
-'''KNOWN BUGS: On reimport this module will get a "1" in the end of his name,
-'''will disappear if reimported one second time
-'''BUT if you export, the "1" will stay and will be accumulated so remove it to not have something like Module1111111111111111111111111111111111111111111111111111111111111111111111111 THANKS
-
-'''TODOs: Export to subfolder named with the mini-game name when using following rule
-'''Beginning of the module name is the mini-game name
-''' "_"(underscore) separates the mini-game and the real module name
-''' after "_"(underscore) just write the module name
 
 
 Option Explicit
@@ -71,7 +63,7 @@ Public Sub ExportModules()
                 bExport = False
         End Select
         
-        If bExport Then
+        If bExport And cmpComponent.Name <> "ModuleHandlerForVCSPurpose" Then
             ''' Export the component to a text file.
             cmpComponent.Export sExportPath & sFileName
             
